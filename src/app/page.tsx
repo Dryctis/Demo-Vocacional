@@ -1,103 +1,161 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState, useEffect } from "react"
+import Background from "@/components/Background"
+import Mascota from "@/components/Mascota"
+import Stepper, { Step } from "@/components/Stepper"
+import Results from "@/components/Results"
+
+export default function Page() {
+  const [respuestas, setRespuestas] = useState({
+    nombre: "",
+    edad: "",
+    opcion: "",
+  })
+  const [finalizado, setFinalizado] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Crear sesión al cargar
+  useEffect(() => {
+    const startSession = async () => {
+      try {
+        const res = await fetch("/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+        if (res.ok) {
+          const { sessionId } = await res.json()
+          setSessionId(sessionId)
+          console.log("Nueva sesión creada ✅", sessionId)
+        } else {
+          console.error("Error creando sesión ❌")
+        }
+      } catch (err) {
+        console.error("Error de red creando sesión:", err)
+      }
+    }
+    startSession()
+  }, [])
+
+  // Validar antes de avanzar
+  const validarPaso = (paso: number): boolean => {
+    setError(null)
+    if (paso === 1 && !respuestas.nombre.trim()) {
+      setError("Debes ingresar tu nombre.")
+      return false
+    }
+    if (paso === 2 && (!respuestas.edad.trim() || parseInt(respuestas.edad) <= 0)) {
+      setError("Debes ingresar una edad válida.")
+      return false
+    }
+    if (paso === 3 && !respuestas.opcion) {
+      setError("Debes seleccionar un área de interés.")
+      return false
+    }
+    return true
+  }
+
+  // Guardar todas las respuestas antes de finalizar
+  const handleFinalizar = async () => {
+    if (!sessionId) {
+      console.error("No hay sessionId para guardar las respuestas ❌")
+      return
+    }
+
+    try {
+      const res = await fetch("/api/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, ...respuestas }),
+      })
+
+      if (res.ok) {
+        console.log("Respuestas guardadas correctamente ✅")
+        setFinalizado(true)
+      } else {
+        console.error("Error al guardar respuestas ❌")
+      }
+    } catch (error) {
+      console.error("Error de red:", error)
+    }
+  }
+
+  // Descargar PDF
+  const handleDownload = async () => {
+    if (!sessionId) {
+      console.error("No hay sessionId disponible ❌")
+      return
+    }
+
+    const res = await fetch(`/api/pdf?sessionId=${sessionId}`, { method: "GET" })
+
+    if (!res.ok) {
+      console.error("Error al generar PDF ❌")
+      return
+    }
+
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "respuestas.pdf"
+    a.click()
+    a.remove()
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="relative min-h-screen flex items-center justify-center">
+      <Background />
+      <div className="relative z-10 w-full max-w-2xl p-10 bg-white/5 backdrop-blur-md rounded-2xl shadow-xl border border-white/10">
+        <div className="flex justify-center -mt-20 mb-4">
+          <Mascota />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {!finalizado ? (
+          <>
+            <Stepper onFinalStepCompleted={handleFinalizar} validateStep={validarPaso}>
+              <Step>
+                <h2 className="font-bold mb-2">Pregunta 1</h2>
+                <input
+                  type="text"
+                  placeholder="¿Cuál es tu nombre?"
+                  value={respuestas.nombre}
+                  onChange={(e) => setRespuestas({ ...respuestas, nombre: e.target.value })}
+                  className="w-full p-3 rounded-md bg-neutral-800/80 border border-neutral-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </Step>
+              <Step>
+                <h2 className="font-bold mb-2">Pregunta 2</h2>
+                <input
+                  type="number"
+                  placeholder="¿Cuál es tu edad?"
+                  value={respuestas.edad}
+                  onChange={(e) => setRespuestas({ ...respuestas, edad: e.target.value })}
+                  className="w-full p-3 rounded-md bg-neutral-800/80 border border-neutral-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </Step>
+              <Step>
+                <h2 className="font-bold mb-2">Pregunta 3</h2>
+                <select
+                  value={respuestas.opcion}
+                  onChange={(e) => setRespuestas({ ...respuestas, opcion: e.target.value })}
+                  className="w-full p-3 rounded-md bg-neutral-800/80 border border-neutral-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="">Selecciona un área de interés</option>
+                  <option value="Tecnología">Tecnología</option>
+                  <option value="Medicina">Medicina</option>
+                  <option value="Finanzas">Finanzas</option>
+                </select>
+              </Step>
+            </Stepper>
+            {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+          </>
+        ) : (
+          <Results respuestas={respuestas} onDownload={handleDownload} />
+        )}
+      </div>
     </div>
-  );
+  )
 }
