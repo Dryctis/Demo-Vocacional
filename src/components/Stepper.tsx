@@ -10,7 +10,7 @@ interface StepperProps {
   onFinalStepCompleted?: () => void
   backButtonText?: string
   nextButtonText?: string
-  validateStep?: (step: number) => boolean // ✅ nueva prop
+  validateStep?: (step: number) => boolean
 }
 
 interface StepProps {
@@ -50,10 +50,7 @@ export default function Stepper({
   }
 
   const handleNext = () => {
-    // ✅ validar antes de avanzar
-    if (validateStep && !validateStep(currentStep)) {
-      return
-    }
+    if (validateStep && !validateStep(currentStep)) return
 
     if (!isLastStep) {
       setDirection(1)
@@ -65,11 +62,12 @@ export default function Stepper({
 
   return (
     <div
-      className="flex flex-col items-center w-full max-w-2xl 
-      bg-white/5 backdrop-blur-md p-10 rounded-2xl 
+      className="flex flex-col items-center w-full max-w-2xl mx-auto
+      bg-white/5 backdrop-blur-md p-6 sm:p-10 rounded-2xl 
       shadow-xl border border-white/10 transition"
     >
-      <div className="flex items-center mb-8">
+      {/* Indicadores de pasos */}
+      <div className="flex items-center justify-center mb-8 flex-wrap gap-3">
         {stepsArray.map((_, index) => {
           const stepNumber = index + 1
           const isActive = currentStep === stepNumber
@@ -78,24 +76,26 @@ export default function Stepper({
           return (
             <React.Fragment key={stepNumber}>
               <motion.div
-                className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg ${
-                  isActive
+                aria-current={isActive ? "step" : undefined}
+                className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 
+                  rounded-full font-semibold text-sm sm:text-lg
+                  ${isActive
                     ? "bg-indigo-600 text-white"
                     : isComplete
                     ? "bg-green-500 text-white"
-                    : "bg-neutral-700/70 text-gray-300"
-                }`}
+                    : "bg-neutral-700/70 text-gray-300"}`}
               >
                 {stepNumber}
               </motion.div>
               {stepNumber < totalSteps && (
-                <div className="w-12 h-0.5 bg-neutral-600/50 mx-3"></div>
+                <div className="hidden sm:block w-12 h-0.5 bg-neutral-600/50 mx-2"></div>
               )}
             </React.Fragment>
           )
         })}
       </div>
 
+      {/* Contenido dinámico */}
       <StepContentWrapper
         isCompleted={isCompleted}
         currentStep={currentStep}
@@ -104,19 +104,26 @@ export default function Stepper({
         {stepsArray[currentStep - 1]}
       </StepContentWrapper>
 
+      {/* Botones */}
       {!isCompleted && (
-        <div className="flex justify-between w-full mt-8">
+        <div className="flex flex-col sm:flex-row justify-between w-full mt-8 gap-3">
           {currentStep > 1 && (
             <button
               onClick={handleBack}
-              className="px-5 py-3 rounded-lg bg-neutral-700/70 text-gray-300 hover:bg-neutral-600/70 transition text-lg"
+              aria-label="Volver al paso anterior"
+              className="w-full sm:w-auto px-5 py-3 rounded-lg 
+                bg-neutral-700/70 text-gray-300 
+                hover:bg-neutral-600/70 transition text-base sm:text-lg"
             >
               {backButtonText}
             </button>
           )}
           <button
             onClick={handleNext}
-            className="ml-auto px-5 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition text-lg"
+            aria-label={isLastStep ? "Finalizar formulario" : "Avanzar al siguiente paso"}
+            className="w-full sm:w-auto ml-auto px-5 py-3 rounded-lg 
+              bg-indigo-600 text-white 
+              hover:bg-indigo-700 transition text-base sm:text-lg"
           >
             {isLastStep ? "Finalizar" : nextButtonText}
           </button>
@@ -142,7 +149,7 @@ function StepContentWrapper({
   return (
     <motion.div
       className="w-full"
-      style={{ position: "relative", minHeight: "200px" }}
+      style={{ position: "relative", minHeight: "220px" }}
     >
       <AnimatePresence initial={false} custom={direction}>
         {!isCompleted && (
@@ -153,7 +160,7 @@ function StepContentWrapper({
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
             className="absolute w-full"
           >
             {children}
@@ -167,9 +174,9 @@ function StepContentWrapper({
 const stepVariants: Variants = {
   enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
   center: { x: "0%", opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? "-50%" : "50%", opacity: 0 }),
+  exit: (dir: number) => ({ x: dir > 0 ? "-40%" : "40%", opacity: 0 }),
 }
 
 export function Step({ children }: StepProps) {
-  return <div className="text-center p-6 text-lg">{children}</div>
+  return <div className="text-center p-4 sm:p-6 text-base sm:text-lg">{children}</div>
 }
