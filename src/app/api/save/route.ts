@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let body: any = {}
     try {
       body = await req.json()
