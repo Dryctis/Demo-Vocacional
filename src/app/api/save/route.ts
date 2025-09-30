@@ -3,34 +3,50 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   try {
-    const { sessionId, ...data } = await req.json()
+    const body = await req.json()
 
-    let session
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Datos inválidos" },
+        { status: 400 }
+      )
+    }
+
+    const { sessionId, ...data } = body
+    let session = null
 
     if (sessionId) {
-      // Reusar la sesión existente
       session = await prisma.userSession.findUnique({
         where: { id: sessionId },
       })
     }
 
     if (!session) {
-      // Si no existe, crear una nueva
       session = await prisma.userSession.create({
         data: {},
       })
     }
 
-    
-    for (const [question, response] of Object.entries(data)) {
-      await prisma.answer.create({
-        data: {
-          sessionId: session.id,
-          question,
-          response: response as string,
-        },
-      })
+    // Guardar respuestas
+    const entries = Object.entries(data)
+    if (entries.length === 0) {
+      return NextResponse.json(
+        { error: "No hay respuestas para guardar" },
+        { status: 400 }
+      )
     }
+
+    await prisma.$transaction(
+      entries.map(([question, response]) =>
+        prisma.answer.create({
+          data: {
+            sessionId: session!.id,
+            question,
+            response: response ? String(response) : null,
+          },
+        })
+      )
+    )
 
     return NextResponse.json({ ok: true, sessionId: session.id })
   } catch (error) {
