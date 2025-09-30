@@ -3,7 +3,12 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    let body: any = {}
+    try {
+      body = await req.json()
+    } catch {
+      body = {}
+    }
 
     if (!body || typeof body !== "object") {
       return NextResponse.json(
@@ -15,38 +20,36 @@ export async function POST(req: Request) {
     const { sessionId, ...data } = body
     let session = null
 
+    // Buscar sesión existente si se manda un id
     if (sessionId) {
       session = await prisma.userSession.findUnique({
         where: { id: sessionId },
       })
     }
 
+    // Crear nueva sesión si no existe
     if (!session) {
       session = await prisma.userSession.create({
         data: {},
       })
     }
 
-    // Guardar respuestas
     const entries = Object.entries(data)
-    if (entries.length === 0) {
-      return NextResponse.json(
-        { error: "No hay respuestas para guardar" },
-        { status: 400 }
+
+    // Si hay respuestas, guardarlas
+    if (entries.length > 0) {
+      await prisma.$transaction(
+        entries.map(([question, response]) =>
+          prisma.answer.create({
+            data: {
+              sessionId: session!.id,
+              question,
+              response: response ? String(response) : null,
+            },
+          })
+        )
       )
     }
-
-    await prisma.$transaction(
-      entries.map(([question, response]) =>
-        prisma.answer.create({
-          data: {
-            sessionId: session!.id,
-            question,
-            response: response ? String(response) : null,
-          },
-        })
-      )
-    )
 
     return NextResponse.json({ ok: true, sessionId: session.id })
   } catch (error) {
